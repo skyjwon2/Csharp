@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/MyTodo (2)/">
+    <Project Path="MyTodo (2)/MyTodo.csproj" />
+  </Folder>
+  <Project Path="AiTodo/AiTodo.csproj" />
+  <Project Path="NotebookTodo/NotebookTodo.csproj" />
+</Solution>

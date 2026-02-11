@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/cheonjaewon/Desktop/C#/C#.csproj": {}
+    "/Users/cheonjaewon/Desktop/Csharp/C#.csproj": {}
   },
   "projects": {
-    "/Users/cheonjaewon/Desktop/C#/C#.csproj": {
+    "/Users/cheonjaewon/Desktop/Csharp/C#.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/cheonjaewon/Desktop/C#/C#.csproj",
+        "projectUniqueName": "/Users/cheonjaewon/Desktop/Csharp/C#.csproj",
         "projectName": "C#",
-        "projectPath": "/Users/cheonjaewon/Desktop/C#/C#.csproj",
+        "projectPath": "/Users/cheonjaewon/Desktop/Csharp/C#.csproj",
         "packagesPath": "/Users/cheonjaewon/.nuget/packages/",
-        "outputPath": "/Users/cheonjaewon/Desktop/C#/obj/",
+        "outputPath": "/Users/cheonjaewon/Desktop/Csharp/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/cheonjaewon/.nuget/NuGet/NuGet.Config"
