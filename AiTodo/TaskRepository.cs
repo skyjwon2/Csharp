@@ -14,16 +14,9 @@ namespace AiTodo
         public TaskRepository()
         {
             _fileManager = new TaskFileManager();
-            _tasks = _fileManager.LoadTasks();
-            
-            if (_tasks.Any())
-            {
-                _nextId = _tasks.Max(t => t.Id) + 1;
-            }
-            else
-            {
-                _nextId = 1;
-            }
+            _tasks = new List<TodoItem>(); // Start with an empty list
+            _fileManager.SaveTasks(_tasks); // Clear the file content immediately
+            _nextId = 1;
         }
 
         public void AddTask(string description)

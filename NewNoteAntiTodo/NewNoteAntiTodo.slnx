@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="NewNoteAntiTodo.Core/NewNoteAntiTodo.Core.csproj" />
+  <Project Path="NewNoteAntiTodo.Infrastructure/NewNoteAntiTodo.Infrastructure.csproj" />
+  <Project Path="NewNoteAntiTodo.Presentation/NewNoteAntiTodo.Presentation.csproj" />
+</Solution>
