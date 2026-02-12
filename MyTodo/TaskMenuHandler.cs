@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace AntiTodo;
+namespace MyTodo;
 
 public class MenuHandler
 {
@@ -27,12 +27,12 @@ public class MenuHandler
             case "6":
                 SaveLoad.Save(tasks, nextId);
                 Console.WriteLine("데이터를 저장하고 종료합니다.");
-                return (nextId, false); // false means stop running
+                return (nextId, false); 
             default:
                 Console.WriteLine("잘못된 입력입니다.");
                 break;
         }
 
-        return (nextId, true); // true means keep running
+        return (nextId, true); 
     }
 }

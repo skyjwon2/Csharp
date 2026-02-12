@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace AntiTodo;
+namespace MyTodo;
 
 public class Program
 {
