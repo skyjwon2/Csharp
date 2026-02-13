@@ -1,0 +1,83 @@
+# PdfProcessor 프로젝트 구조 분석
+
+이 문서는 `PdfProcessor` 솔루션의 아키텍처와 주요 컴포넌트의 구현 방식을 상세히 설명합니다.
+
+## 1. 전체 아키텍처 (Clean Architecture)
+
+이 솔루션은 **Clean Architecture** 원칙을 따르며 4개의 프로젝트로 분리되어 있습니다. 의존성은 안쪽(Domain)으로 향합니다.
+
+```mermaid
+graph TD
+    API[PdfProcessor.Api] --> App[PdfProcessor.Application]
+    API --> Infra[PdfProcessor.Infrastructure]
+    Infra --> App
+    Infra --> Domain[PdfProcessor.Domain]
+    App --> Domain
+```
+
+### 각 레이어의 역할
+
+| 프로젝트 | 역할 | 설명 |
+|---|---|---|
+| **PdfProcessor.Domain** | 핵심 로직 | 비즈니스 엔티티 ([PdfDocumentModel](file:///Users/cheonjaewon/Desktop/Csharp/PdfProcessor/PdfProcessor.Domain/PdfDocumentModel.cs#6-22), `TocNode`) 및 상태 정의. 외부 의존성이 없음. |
+| **PdfProcessor.Application** | 인터페이스 | 비즈니스 로직을 수행하기 위한 인터페이스 정의 (`IPdfAnalysisService`, `IStorageService`). 구현 세부 사항을 모름. |
+| **PdfProcessor.Infrastructure** | 구현부 | 실제 기술적 구현. [PdfPig](file:///Users/cheonjaewon/Desktop/Csharp/PdfProcessor/PdfProcessor.Infrastructure/Services/PdfPigAnalysisService.cs#18-22)를 이용한 PDF 분석, 백그라운드 작업 처리 등. |
+| **PdfProcessor.Api** | 진입점 | ASP.NET Core Web API. 의존성 주입(DI) 설정 및 HTTP 요청 처리. |
+
+---
+
+## 2. 주요 컴포넌트 상세 분석
+
+### A. 도메인 모델 (`PdfProcessor.Domain`)
+핵심 데이터 구조입니다.
+- **[PdfDocumentModel](file:///Users/cheonjaewon/Desktop/Csharp/PdfProcessor/PdfProcessor.Domain/PdfDocumentModel.cs#6-22)**: PDF 문서의 메타데이터와 분석 결과를 담는 루트 엔티티입니다.
+    - [TableOfContents](file:///Users/cheonjaewon/Desktop/Csharp/PdfProcessor/PdfProcessor.Infrastructure/Services/PdfPigAnalysisService.cs#146-213): 계층형 목차 구조 (`List<TocNode>`)
+    - `Images`: 추출된 이미지 목록 (`List<ExtractedImage>`)
+    - `TextContent`: 전체 텍스트
+- **`ProcessingStatus`**: 처리 상태 (Pending -> Processing -> Completed/Failed)
+
+### B. PDF 분석 서비스 ([PdfPigAnalysisService](file:///Users/cheonjaewon/Desktop/Csharp/PdfProcessor/PdfProcessor.Infrastructure/Services/PdfPigAnalysisService.cs#18-22))
+**위치**: [PdfProcessor.Infrastructure/Services/PdfPigAnalysisService.cs](file:///Users/cheonjaewon/Desktop/Csharp/PdfProcessor/PdfProcessor.Infrastructure/Services/PdfPigAnalysisService.cs)
+
+`UglyToad.PdfPig` 라이브러리를 사용하여 PDF를 정밀 분석합니다.
+
+1.  **줄(Line) 재구성 알고리즘 ([GetLinesFromPage](file:///Users/cheonjaewon/Desktop/Csharp/PdfProcessor/PdfProcessor.Infrastructure/Services/PdfPigAnalysisService.cs#77-122))**
+    - PDF는 기본적으로 "단어" 단위로 저장됩니다. 이를 사람이 읽는 "줄"로 만들기 위해 좌표 분석을 수행합니다.
+    - **Y축 정렬**: 페이지 상단부터 하단으로 단어를 정렬합니다.
+    - **라인 클러스터링**: Y 좌표 차이가 `3.0` 미만인 단어들을 같은 줄로 묶습니다.
+    - **X축 정렬**: 같은 줄 내에서 왼쪽에서 오른쪽으로 단어를 정렬하여 문장을 완성합니다.
+
+2.  **목차(TOC) 추론 ([BuildTableOfContents](file:///Users/cheonjaewon/Desktop/Csharp/PdfProcessor/PdfProcessor.Infrastructure/Services/PdfPigAnalysisService.cs#146-213))**
+    - PDF에 실제 목차 구조가 없을 경우, 폰트 정보를 기반으로 추론합니다.
+    - **폰트 크기 분석**: 문서 전체의 평균 폰트 크기를 계산하고, 그보다 1.2배 이상 크거나 Bold체인 경우 "제목(Heading)"으로 간주합니다.
+    - **계층 구조 형성**: Stack 자료구조를 사용하여, 현재 노드보다 폰트가 작으면 자식 노드로, 크거나 같으면 부모/형제 노드로 판단하여 트리 구조를 만듭니다.
+
+3.  **이미지 추출**
+    - 페이지 내의 이미지를 탐색하여 PNG로 변환 및 저장합니다.
+
+### C. 비동기 백그라운드 처리 ([BackgroundPdfWorker](file:///Users/cheonjaewon/Desktop/Csharp/PdfProcessor/PdfProcessor.Infrastructure/Services/BackgroundPdfWorker.cs#14-62))
+**위치**: [PdfProcessor.Infrastructure/Services/BackgroundPdfWorker.cs](file:///Users/cheonjaewon/Desktop/Csharp/PdfProcessor/PdfProcessor.Infrastructure/Services/BackgroundPdfWorker.cs)
+
+사용자가 PDF를 업로드했을 때 API가 멈추지 않도록 **비동기 큐(Queue)** 패턴을 사용합니다.
+
+1.  **Channel 패턴**: `System.Threading.Channels.Channel<ProcessingJob>`을 사용하여 스레드 안전한 작업 큐를 구현했습니다.
+2.  **Producer (API)**: 파일이 업로드되면 [QueueJobAsync](file:///Users/cheonjaewon/Desktop/Csharp/PdfProcessor/PdfProcessor.Infrastructure/Services/BackgroundPdfWorker.cs#27-31)를 통해 작업을 채널에 넣습니다. 즉시 응답을 반환합니다.
+3.  **Consumer (Worker)**: 백그라운드 서비스가 계속해서 채널을 감시(`WaitToReadAsync`)하다가, 작업이 들어오면 하나씩 꺼내서 `IPdfAnalysisService`를 실행합니다.
+4.  **Scope 관리**: 백그라운드 서비스는 싱글톤이지만, 분석 서비스는 스코프(Scoped)일 수 있으므로 `CreateScope()`를 사용하여 안전하게 서비스를 가져옵니다.
+
+---
+
+## 3. 실행 흐름 (Workflow)
+
+1.  **사용자 요청**: `POST /upload` (PDF 파일 전송)
+2.  **API 서버**: 파일을 로컬/스토리지에 저장하고, [BackgroundPdfWorker](file:///Users/cheonjaewon/Desktop/Csharp/PdfProcessor/PdfProcessor.Infrastructure/Services/BackgroundPdfWorker.cs#14-62)에 작업 ID와 경로를 전달. 사용자에게는 "처리 중(Processing)" 상태와 `JobId`를 즉시 반환.
+3.  **백그라운드 워커**: 대기열에서 작업을 감지하고 [PdfPigAnalysisService](file:///Users/cheonjaewon/Desktop/Csharp/PdfProcessor/PdfProcessor.Infrastructure/Services/PdfPigAnalysisService.cs#18-22) 호출.
+4.  **분석 수행**: 텍스트, 이미지, 목차 추출.
+5.  **결과 저장**: 분석 결과를 DB에 업데이트 (현재 코드는 로깅으로 대체됨).
+
+## 4. 현재 상태 및 필요한 작업
+
+현재 [PdfProcessor.Api/Program.cs](file:///Users/cheonjaewon/Desktop/Csharp/PdfProcessor/PdfProcessor.Api/Program.cs)는 기본 템플릿 상태입니다. 아키텍처가 작동하려면 다음 연결 작업이 필요합니다:
+- [ ] **DI 등록**: `IPdfAnalysisService` -> [PdfPigAnalysisService](file:///Users/cheonjaewon/Desktop/Csharp/PdfProcessor/PdfProcessor.Infrastructure/Services/PdfPigAnalysisService.cs#18-22), `IStorageService` 구현체 등록.
+- [ ] **HostedService 등록**: `builder.Services.AddHostedService<BackgroundPdfWorker>();` 추가.
+- [ ] **Controller 구현**: 업로드 및 조회 API 엔드포인트 구현.
