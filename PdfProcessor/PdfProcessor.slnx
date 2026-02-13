@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="PdfProcessor.Api/PdfProcessor.Api.csproj" />
+  <Project Path="PdfProcessor.Application/PdfProcessor.Application.csproj" />
+  <Project Path="PdfProcessor.Domain/PdfProcessor.Domain.csproj" />
+  <Project Path="PdfProcessor.Infrastructure/PdfProcessor.Infrastructure.csproj" />
+</Solution>
